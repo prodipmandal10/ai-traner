@@ -21,7 +21,7 @@ OUT_FILE="/tmp/ai_context_dump.txt"
 
 clear
 echo -e "${MAGENTA}=====================================================${RESET}"
-echo -e "${GREEN} 👁️‍🗨️ AI CONTEXT SPY - GOD MODE (V3.0) 👁️‍🗨️ ${RESET}"
+echo -e "${GREEN} ☢️ AI CONTEXT SPY - ULTIMATE HACKER MODE (V4.0) ☢️ ${RESET}"
 echo -e "${MAGENTA}=====================================================${RESET}"
 
 # 1. Get Project List
@@ -57,29 +57,29 @@ if [[ "$CH" == "0" || -z "$CH" || "$CH" -gt "${#PROJ_LIST[@]}" ]]; then exit 0; 
 SELECTED_PROJ="${PROJ_LIST[$((CH-1))]}"
 PROJ_PATH="$BASE_DIR/$SELECTED_PROJ"
 
-# 3. Database Selection (Interactive for 100% accuracy)
-echo -e "\n${CYAN}[*] Scanning for Database Name...${RESET}"
-DETECTED_DB=$(sudo grep -rhiEo "(DB_NAME|dbname|database|db_database)[\"'\s=>]+[\"'][^\"']+[\"']" "$PROJ_PATH" | grep -v "\$" | head -n 1 | grep -oP "['\"][^'\"]+['\"]" | tr -d "'\"")
+# 3. Database Selection
+echo -e "\n${CYAN}[*] Deep Scanning Database & Architecture...${RESET}"
+DETECTED_DB=$(sudo grep -rhiEo "(DB_NAME|dbname|database|db_database)[\"'\s=>]+[\"'][^\"']+[\"']" "$PROJ_PATH" 2>/dev/null | grep -v "\$" | head -n 1 | grep -oP "['\"][^'\"]+['\"]" | tr -d "'\"")
 if [ -z "$DETECTED_DB" ]; then
-    DETECTED_DB=$(sudo grep -rhiP 'new\s+mysqli\s*\(' "$PROJ_PATH" | head -n 1 | awk -F',' '{print $4}' | tr -d " '\"()")
+    DETECTED_DB=$(sudo grep -rhiP 'new\s+mysqli\s*\(' "$PROJ_PATH" 2>/dev/null | head -n 1 | awk -F',' '{print $4}' | tr -d " '\"()")
 fi
 
 echo -e "${YELLOW}Detected DB: ${CYAN}${DETECTED_DB:-None}${RESET}"
 read -p "Press Enter to use this DB, OR type the exact Database Name manually: " USER_DB
 DB_NAME=${USER_DB:-$DETECTED_DB}
 
-echo -e "\n${YELLOW}[*] Extracting God-Mode Context for: ${CYAN}$SELECTED_PROJ${RESET}..."
+echo -e "\n${YELLOW}[*] Extracting Hacker-Level Context for: ${CYAN}$SELECTED_PROJ${RESET}..."
 
 # 4. Generate Context Report
 > "$OUT_FILE"
 
-echo "Hello AI, I am building/editing a PHP & MySQL project. Below is the complete server architecture, file structure, and database schema. Keep this context in mind for all future code generation." >> "$OUT_FILE"
+echo "Hello AI, I am building/editing an advanced PHP & MySQL project. Below is the complete server architecture, deep file structure, tech stack, and database schema. Keep this extremely detailed context in mind for all future code generation." >> "$OUT_FILE"
 echo "" >> "$OUT_FILE"
 echo "=====================================================" >> "$OUT_FILE"
 echo " 📁 PROJECT PROFILE: $SELECTED_PROJ " >> "$OUT_FILE"
 echo "=====================================================" >> "$OUT_FILE"
 
-# --- SYSTEM & NGINX ---
+# --- [1] SYSTEM & NGINX ---
 CONF_FILE=$(sudo grep -rl "root $PROJ_PATH" /etc/nginx/sites-available/ /etc/nginx/sites-enabled/ 2>/dev/null | head -n 1)
 DOMAIN=$(sudo awk '/server_name/ {print $0}' "$CONF_FILE" 2>/dev/null | head -n 1 | sed 's/server_name //;s/;//;s/^[ \t]*//')
 EXT_LESS=$(sudo grep -q "@php" "$CONF_FILE" 2>/dev/null && echo "YES" || echo "NO")
@@ -89,10 +89,32 @@ echo "-----------------------------------" >> "$OUT_FILE"
 echo "Project Dir : $PROJ_PATH" >> "$OUT_FILE"
 echo "PHP Version : $(php -v | head -n 1 | cut -d' ' -f1,2)" >> "$OUT_FILE"
 echo "Domain Used : ${DOMAIN:-Localhost}" >> "$OUT_FILE"
-echo "Clean URLs  : $EXT_LESS (Extensionless .php)" >> "$OUT_FILE"
+echo "Clean URLs  : $EXT_LESS (Extensionless .php via Nginx)" >> "$OUT_FILE"
 
-# --- DATABASE SCHEMA DUMP ---
-echo -e "\n[2] DATABASE SCHEMA ($DB_NAME)" >> "$OUT_FILE"
+# --- [2] TECH STACK & LIBRARIES ---
+echo -e "\n[2] DETECTED TECH STACK & LIBRARIES" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+if [ -f "$PROJ_PATH/composer.json" ]; then echo "  - 📦 PHP Composer Used" >> "$OUT_FILE"; fi
+sudo grep -riqm1 "tailwind" "$PROJ_PATH" && echo "  - 🎨 Tailwind CSS Detected" >> "$OUT_FILE"
+sudo grep -riqm1 "bootstrap" "$PROJ_PATH" && echo "  - 🎨 Bootstrap Detected" >> "$OUT_FILE"
+sudo grep -riqm1 "jquery" "$PROJ_PATH" && echo "  - ⚙️ jQuery Detected" >> "$OUT_FILE"
+sudo grep -riqm1 "axios" "$PROJ_PATH" && echo "  - 🌐 Axios (AJAX) Detected" >> "$OUT_FILE"
+sudo grep -riqm1 "sweetalert" "$PROJ_PATH" && echo "  - 🔔 SweetAlert Detected" >> "$OUT_FILE"
+sudo grep -riqm1 "chart\.js" "$PROJ_PATH" && echo "  - 📊 Chart.js Detected" >> "$OUT_FILE"
+
+# --- [3] ARCHITECTURE & INCLUDES MAP ---
+echo -e "\n[3] ARCHITECTURE (Most Included/Required Files)" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+echo "AI Info: These are the core files connecting the app together:" >> "$OUT_FILE"
+sudo grep -rEho "(include|require)(_once)?\s*\(?['\"][^'\"]+['\"]\)?;" "$PROJ_PATH" 2>/dev/null | grep -v "vendor" | sort | uniq -c | sort -nr | head -n 10 | awk '{print "  - Included " $1 " times: " $2" "$3}' >> "$OUT_FILE"
+
+# --- [4] API & ENDPOINTS DETECTOR ---
+echo -e "\n[4] DETECTED API & AJAX ENDPOINTS" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+sudo find "$PROJ_PATH" -type f \( -name "*api*.php" -o -name "*ajax*.php" -o -name "*handler*.php" \) -exec basename {} \; | sort | uniq | sed 's/^/  - /' >> "$OUT_FILE"
+
+# --- [5] DATABASE SCHEMA DUMP ---
+echo -e "\n[5] DATABASE SCHEMA ($DB_NAME)" >> "$OUT_FILE"
 echo "-----------------------------------" >> "$OUT_FILE"
 if [ -n "$DB_NAME" ]; then
     DB_EXISTS=$(sudo mysql -N -e "SHOW DATABASES LIKE '$DB_NAME';")
@@ -111,17 +133,17 @@ else
     echo "❌ No Database configured." >> "$OUT_FILE"
 fi
 
-# --- PROJECT FILE STRUCTURE ---
-echo -e "\n\n[3] PROJECT FILE STRUCTURE (PHP Files)" >> "$OUT_FILE"
+# --- [6] FULL PROJECT TREE ---
+echo -e "\n\n[6] PROJECT FILE STRUCTURE (PHP, JS, CSS, ENV)" >> "$OUT_FILE"
 echo "-----------------------------------" >> "$OUT_FILE"
 cd "$PROJ_PATH" || exit
-# Exclude vendor and node_modules, show tree structure of PHP files
-sudo find . -type d \( -name "vendor" -o -name "node_modules" \) -prune -o -type f -name "*.php" -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >> "$OUT_FILE"
+# Exclude heavy folders, show tree of core files
+sudo find . -type d \( -name "vendor" -o -name "node_modules" -o -name ".git" -o -name "uploads" \) -prune -o -type f \( -name "*.php" -o -name "*.js" -o -name "*.css" -o -name "*.env" -o -name "*.json" \) -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >> "$OUT_FILE"
 echo "=====================================================" >> "$OUT_FILE"
 
 # 5. Display the output cleanly
 clear
-echo -e "${GREEN}✅ GOD-MODE CONTEXT GENERATED SUCCESSFULLY!${RESET}"
+echo -e "${GREEN}✅ ULTIMATE CONTEXT GENERATED SUCCESSFULLY!${RESET}"
 echo -e "${YELLOW}👇 Copy the FULL text below and paste it to ChatGPT/Gemini:${RESET}"
 echo -e "${CYAN}-------------------------------------------------------------------------${RESET}"
 cat "$OUT_FILE"
