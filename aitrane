@@ -1,0 +1,136 @@
+#!/bin/bash
+
+# --- 🪄 MAGIC DOS2UNIX AUTO-FIX (GitHub & Windows WSL safe) ---
+if grep -q $'\r' "$0"; then
+    echo -e "\e[33m[*] Fixing Line Endings automatically...\e[0m"
+    sed -i 's/\r$//' "$0"
+    exec bash "$0" "$@"
+fi
+# ----------------------------------------------------
+
+# Colors
+GREEN="\e[32m"
+CYAN="\e[36m"
+YELLOW="\e[33m"
+MAGENTA="\e[35m"
+RED="\e[31m"
+RESET="\e[0m"
+
+BASE_DIR="/var/www/html"
+# Using /tmp so it works flawlessly on both VPS Root and Local Ubuntu (WSL)
+OUT_FILE="/tmp/ai_context_dump.txt"
+
+clear
+echo -e "${MAGENTA}=====================================================${RESET}"
+echo -e "${GREEN} 🕵️‍♂️ AI CONTEXT SPY - PROJECT SCANNER (V2.0) 🕵️‍♂️ ${RESET}"
+echo -e "${MAGENTA}=====================================================${RESET}"
+echo -e "${CYAN}[*] Searching for active projects...${RESET}\n"
+
+# 1. Get Project List
+cd "$BASE_DIR" || exit
+shopt -s nullglob
+DIRS=(*/)
+shopt -u nullglob
+
+if [ ${#DIRS[@]} -eq 0 ]; then 
+    echo -e "${RED}[-] No projects found in $BASE_DIR!${RESET}"
+    exit 1
+fi
+
+PROJ_LIST=()
+echo -e "${YELLOW}Available Projects:${RESET}"
+echo -e "${BLUE}-----------------------------------------------------${RESET}"
+for i in "${!DIRS[@]}"; do
+    PROJ_NAME="${DIRS[$i]%/}"
+    # Ignore backup folders if any
+    if [[ "$PROJ_NAME" != *"_baseline_safe"* && "$PROJ_NAME" != "phpmyadmin" ]]; then
+        PROJ_LIST+=("$PROJ_NAME")
+        echo -e "${GREEN}  $(( ${#PROJ_LIST[@]} ))) 📁 $PROJ_NAME${RESET}"
+    fi
+done
+echo -e "${BLUE}-----------------------------------------------------${RESET}"
+echo -e "${RED}  0) ❌ Exit${RESET}"
+
+# 2. Select Project
+read -p "Select a Project SL No [0-${#PROJ_LIST[@]}]: " CH
+CH=$(echo "$CH" | tr -cd '0-9')
+
+if [[ "$CH" == "0" || -z "$CH" || "$CH" -gt "${#PROJ_LIST[@]}" ]]; then 
+    echo -e "${RED}Exiting...${RESET}"
+    exit 0
+fi
+
+SELECTED_PROJ="${PROJ_LIST[$((CH-1))]}"
+PROJ_PATH="$BASE_DIR/$SELECTED_PROJ"
+
+echo -e "\n${YELLOW}[*] Extracting 'Gusti-Musti' (A to Z) for: ${CYAN}$SELECTED_PROJ${RESET}..."
+
+# 3. Generate the Context Report
+> "$OUT_FILE" # Clear old file
+
+echo "Hello AI, I need help writing/editing code for my specific project. Below is the complete server map and context for this specific project. Please keep this context in mind." >> "$OUT_FILE"
+echo "" >> "$OUT_FILE"
+echo "=====================================================" >> "$OUT_FILE"
+echo " 📁 PROJECT PROFILE: $SELECTED_PROJ " >> "$OUT_FILE"
+echo "=====================================================" >> "$OUT_FILE"
+
+# --- SYSTEM & PATH ---
+echo -e "\n[1] ENVIRONMENT & PATH" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+echo "OS         : $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"')" >> "$OUT_FILE"
+echo "Server     : $(nginx -v 2>&1)" >> "$OUT_FILE"
+echo "PHP Ver    : $(php -v | head -n 1 | cut -d' ' -f1,2)" >> "$OUT_FILE"
+echo "Project Dir: $PROJ_PATH" >> "$OUT_FILE"
+
+# --- NGINX DETAILS ---
+echo -e "\n[2] NGINX DOMAIN & CONFIG" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+# Finding Nginx config safely
+CONF_FILE=$(sudo grep -rl "root $PROJ_PATH" /etc/nginx/sites-available/ /etc/nginx/sites-enabled/ 2>/dev/null | head -n 1)
+
+if [ -n "$CONF_FILE" ]; then
+    DOMAIN=$(sudo awk '/server_name/ {print $0}' "$CONF_FILE" | head -n 1 | sed 's/server_name //;s/;//;s/^[ \t]*//')
+    SSL_STAT=$(sudo grep -q "listen 443 ssl" "$CONF_FILE" && echo "✅ YES (HTTPS)" || echo "❌ NO (HTTP Only)")
+    EXT_LESS=$(sudo grep -q "@php" "$CONF_FILE" && echo "✅ YES (Extensionless / Try_Files Active)" || echo "❌ NO (Standard PHP)")
+    
+    echo "Domain      : $DOMAIN" >> "$OUT_FILE"
+    echo "SSL Active  : $SSL_STAT" >> "$OUT_FILE"
+    echo "Clean URLs  : $EXT_LESS" >> "$OUT_FILE"
+    echo "Config Path : $CONF_FILE" >> "$OUT_FILE"
+else
+    echo "Domain      : Localhost / No custom Nginx config detected." >> "$OUT_FILE"
+fi
+
+# --- DATABASE DETAILS ---
+echo -e "\n[3] DATABASE CONNECTION" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+# Smart scan for DB name
+DB_NAME=$(sudo grep -rhiEo "(DB_NAME|dbname|database|db_database)[\"'\s=>]+[\"'][^\"']+[\"']" "$PROJ_PATH" 2>/dev/null | head -n 1 | grep -oP "['\"][^'\"]+['\"]" | tail -n 1 | tr -d "'\"")
+if [ -z "$DB_NAME" ]; then
+    DB_NAME=$(sudo grep -rhiP 'new\s+mysqli\s*\(' "$PROJ_PATH" 2>/dev/null | head -n 1 | awk -F',' '{print $4}' | tr -d " '\"()")
+fi
+
+if [ -n "$DB_NAME" ]; then
+    echo "DB Engine   : $(mysql -V | cut -d' ' -f1,2,3)" >> "$OUT_FILE"
+    echo "DB Name     : $DB_NAME" >> "$OUT_FILE"
+else
+    echo "DB Name     : ❌ No database connection found in project files." >> "$OUT_FILE"
+fi
+
+# --- PROJECT STATS ---
+echo -e "\n[4] PROJECT SIZE & STATS" >> "$OUT_FILE"
+echo "-----------------------------------" >> "$OUT_FILE"
+echo "Total PHP Files : $(find "$PROJ_PATH" -type f -name "*.php" 2>/dev/null | wc -l)" >> "$OUT_FILE"
+echo "Total CSS Files : $(find "$PROJ_PATH" -type f -name "*.css" 2>/dev/null | wc -l)" >> "$OUT_FILE"
+echo "Total JS Files  : $(find "$PROJ_PATH" -type f -name "*.js" 2>/dev/null | wc -l)" >> "$OUT_FILE"
+echo "=====================================================" >> "$OUT_FILE"
+
+# 4. Display the output cleanly for copying
+clear
+echo -e "${GREEN}✅ CONTEXT GENERATED SUCCESSFULLY!${RESET}"
+echo -e "${YELLOW}👇 Just copy the text below from the box and paste it to ChatGPT/Gemini:${RESET}"
+echo -e "${CYAN}-------------------------------------------------------------------------${RESET}"
+cat "$OUT_FILE"
+echo -e "${CYAN}-------------------------------------------------------------------------${RESET}"
+echo -e "${MAGENTA}💡 TIP: Highlight the text above, right-click to copy, and open a New AI Chat!${RESET}"
+echo ""
